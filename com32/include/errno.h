@@ -127,8 +127,35 @@ extern int errno;
 #define	EISNAM		120	/* Is a named type file */
 #define	EREMOTEIO	121	/* Remote I/O error */
 #define	EDQUOT		122	/* Quota exceeded */
-
 #define	ENOMEDIUM	123	/* No medium found */
 #define	EMEDIUMTYPE	124	/* Wrong medium type */
+#define ECANCELED       125     /* Operation Canceled */
+#define ENOKEY          126     /* Required key not available */
+#define EKEYEXPIRED     127     /* Key has expired */
+#define EKEYREVOKED     128     /* Key has been revoked */
+#define EKEYREJECTED    129     /* Key was rejected by service */
+#define EOWNERDEAD      130     /* Owner died */
+#define ENOTRECOVERABLE 131     /* State not recoverable */
+
+/* lwIP nameserver query return codes */
+#define ENSROK		0	/* DNS server returned answer with no data */
+#define ENSRNODATA	160	/* DNS server returned answer with no data */
+#define ENSRFORMERR	161	/* DNS server claims query was misformatted */
+#define ENSRSERVFAIL	162	/* DNS server returned general failure */
+#define ENSRNOTFOUND	163	/* Domain name not found */
+#define ENSRNOTIMP	164	/* DNS server does not implement requested operation */
+#define ENSRREFUSED	165	/* DNS server refused query */
+#define ENSRBADQUERY	166	/* Misformatted DNS query */
+#define ENSRBADNAME	167	/* Misformatted domain name */
+#define ENSRBADFAMILY	168	/* Unsupported address family */
+#define ENSRBADRESP	169	/* Misformatted DNS reply */
+#define ENSRCONNREFUSED	170	/* Could not contact DNS servers */
+#define ENSRTIMEOUT	171	/* Timeout while contacting DNS servers */
+#define ENSROF		172	/* End of file */
+#define ENSRFILE	173	/* Error reading file */
+#define ENSRNOMEM	174	/* Out of memory */
+#define ENSRDESTRUCTION 175	/* Application terminated lookup */
+#define ENSRQUERYDOMAINTOOLONG  176 /* Domain name is too long */
+#define ENSRCNAMELOOP	177	/* Domain name is too long */
 
 #endif /* _ERRNO_H */
