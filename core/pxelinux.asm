@@ -374,9 +374,15 @@ pxenv:
 		pushfd
 		pushad
 %if USE_PXE_PROVIDED_STACK == 0
+		pushf
+		cli
+		inc word [cs:PXEStackLock]
+		jnz .skip1
 		mov [cs:PXEStack],sp
 		mov [cs:PXEStack+2],ss
 		lss sp,[cs:InitStack]
+.skip1:
+		popf
 %endif
 		; Pre-clear the Status field
 		mov word [es:di],cs
@@ -391,7 +397,13 @@ pxenv:
 		add sp,6
 		mov [cs:PXEStatus],ax
 %if USE_PXE_PROVIDED_STACK == 0
+		pushf
+		cli
+		dec word [cs:PXEStackLock]
+		jns .skip2
 		lss sp,[cs:PXEStack]
+.skip2:
+		popf
 %endif
 		mov bp,sp
 		and ax,ax
@@ -406,6 +418,16 @@ pxenv:
 ; Must be after function def due to NASM bug
                 global PXEEntry
 PXEEntry	equ pxenv.jump+1
+
+;
+; The PXEStackLock keeps us from switching stacks if we take an interrupt
+; (which ends up calling pxenv) while we are already on the PXE stack.
+; It will be -1 normally, 0 inside a PXE call, and a positive value
+; inside a *nested* PXE call.
+;
+		section .data16
+		alignb 2
+PXEStackLock	dw -1
 
 		section .bss16
 		alignb 2
