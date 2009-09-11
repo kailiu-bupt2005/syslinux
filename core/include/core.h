@@ -15,6 +15,9 @@ extern char KernelName[];
 /* diskstart.inc isolinux.asm*/
 extern void getlinsec(void);
 
+/* pm.inc */
+extern void (*core_pm_hook)(void);
+
 /* getc.inc */
 extern void core_open(void);
 
