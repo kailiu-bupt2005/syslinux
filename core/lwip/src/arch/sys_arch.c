@@ -58,7 +58,7 @@ void sys_mbox_post(sys_mbox_t mbox, void *msg)
 
 err_t sys_mbox_trypost(sys_mbox_t mbox, void *msg)
 {
-    return mbox_post(mbox, msg, -1);
+    return mbox_post(mbox, msg, -1) ? ERR_MEM : ERR_OK;
 }
 
 u32_t sys_arch_mbox_fetch(sys_mbox_t mbox, void **msg, u32_t timeout)
@@ -76,5 +76,3 @@ u32_t sys_arch_mbox_tryfetch(sys_mbox_t mbox, void **msg)
 {
     return mbox_fetch(mbox, msg, -1);
 }
-
-
