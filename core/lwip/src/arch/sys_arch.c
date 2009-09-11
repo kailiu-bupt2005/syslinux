@@ -15,6 +15,7 @@ sys_sem_t sys_sem_new(u8_t count)
 	return NULL;
 
     sem_init(sem, count);
+    return sem;
 }
 
 void sys_sem_free(sys_sem_t sem)
