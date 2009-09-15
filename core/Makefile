@@ -83,7 +83,7 @@ kwdhash.gen: keywords genhash.pl
 .PRECIOUS: %.elf
 
 %.raw: %.elf
-	$(OBJCOPY) -O binary -R .rel.dyn $< $(@:.bin=.raw)
+	$(OBJCOPY) -O binary $< $(@:.bin=.raw)
 
 %.bin: %.raw $(PREPCORE)
 	$(PREPCORE) $< $@

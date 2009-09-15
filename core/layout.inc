@@ -39,6 +39,7 @@ LATEBSS_START	equ 0B800h
 		section .config		write progbits align=4
 		section .replacestub	exec write progbits align=16
 		section .gentextnr	exec write nobits align=16
+		section .stack16	write nobits align=16
 
 		; Use .bss16 for things that doesn't have to be in low memory;
 		; .earlybss should be used for things that absolutely have
@@ -68,6 +69,9 @@ RBFG_brainfuck:	resb 2048		; Bigger than an Ethernet packet...
 		; is because while loading the primary image we will clobber
 		; the spillover from the last fractional sector load.
 		section .uibss		write nobits align=16
+
+		; Put this here to get the appropriate flags on .stack
+		section .stack		write nobits align=16
 
 		; Symbols from linker script
 %macro SECINFO 1
