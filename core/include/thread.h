@@ -24,9 +24,10 @@ struct sys_timeouts;
 
 struct thread {
     void *esp;			/* Must be first; stack pointer */
+    const char *name;		/* Name (for debugging) */
     struct thread_list  list;
     struct thread_block *blocked;
-    struct sys_timeouts *timeouts; /* For the benefit of lwIP */
+    void *pvt;			/* For the benefit of lwIP */
     int prio;
 };
 
@@ -47,6 +48,15 @@ struct semaphore {
     int count;
     struct thread_list list;
 };
+
+#define DECLARE_INIT_SEMAPHORE(sem, cnt)	\
+    struct semaphore sem = {			\
+	.count = (cnt),				\
+	.list =	{				\
+            .next = &sem.list,			\
+            .prev = &sem.list                   \
+        }					\
+    }
 
 jiffies_t sem_down(struct semaphore *, jiffies_t);
 void sem_up(struct semaphore *);
@@ -75,7 +85,7 @@ static inline void irq_restore(irq_state_t __st)
     asm volatile("pushl %0 ; popfl" : : "rm" (__st));
 }
 
-struct thread *start_thread(size_t stack_size, int prio,
+struct thread *start_thread(const char *name, size_t stack_size, int prio,
 			    void (*start_func)(void *), void *func_arg);
 void __exit_thread(void);
 void kill_thread(struct thread *);

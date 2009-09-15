@@ -15,6 +15,12 @@ typedef struct thread    *sys_thread_t;
 #define SYS_MBOX_NULL	NULL
 #define SYS_SEM_NULL	NULL
 
+static inline sys_thread_t sys_thread_new(char *name, void (*thread)(void *),
+					  void *arg, int stacksize, int prio)
+{
+    return start_thread(name, stacksize, prio, thread, arg);
+}
+
 extern void __compile_time_error(void);
 
 #define SYS_ARCH_OP(var, val, inc, add)					\
@@ -51,6 +57,11 @@ do {									\
 	}								\
     }									\
 } while (0)
+
+static inline struct sys_timeouts *sys_arch_timeouts(void)
+{
+    return (struct sys_timeouts *)&current()->pvt;
+}
 
 #define SYS_ARCH_INC(var, val) SYS_ARCH_OP(var, val, "inc", "add")
 #define SYS_ARCH_DEC(var, val) SYS_ARCH_OP(var, val, "dec", "sub")

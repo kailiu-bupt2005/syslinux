@@ -218,7 +218,7 @@ low_level_input(t_PXENV_UNDI_ISR *isr)
        * available data in the pbuf is given by the q->len
        * variable.
        */
-      char *s;
+      char *s = q->payload;
       int ql = q->len;
 
       while (ql) {

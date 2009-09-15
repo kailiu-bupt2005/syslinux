@@ -11,7 +11,7 @@
 #include <string.h>
 
 extern uint8_t pxe_irq_pending;
-static struct semaphore pxe_receive_thread_sem;
+static DECLARE_INIT_SEMAPHORE(pxe_receive_thread_sem, 0);
 
 static void pm_return(void)
 {
@@ -27,7 +27,8 @@ static void pm_return(void)
 
     if (pxe_irq_pending) {
 	pxe_irq_pending = 0;
-	sem_up(&pxe_receive_thread_sem);
+	if (pxe_receive_thread_sem.count <= 0)
+	  sem_up(&pxe_receive_thread_sem);
     }
 
     __schedule_lock--;
@@ -89,7 +90,7 @@ static void pxe_receive_thread(void *dummy)
 void pxe_init_isr(void)
 {
     start_idle_thread();
-    sem_init(&pxe_receive_thread_sem, 0);
+    start_thread("pxe receive", 16384, 0, pxe_receive_thread, NULL);
     core_pm_hook = pm_return;
 }
 

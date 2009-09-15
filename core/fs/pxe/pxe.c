@@ -5,6 +5,7 @@
 #include <minmax.h>
 #include <sys/cpu.h>
 #include "pxe.h"
+#include "thread.h"
 
 #define GPXE 1
 
@@ -1484,8 +1485,11 @@ static void network_init(void)
  */
 static int pxe_fs_init(struct fs_info *fs)
 {
+    extern void pxe_init_isr(void); /* XXX */
     (void)fs;    /* drop the compile warning message */
-    
+
+    pxe_init_isr();
+
     /* Initialize the Files structure */
     files_init();
 
