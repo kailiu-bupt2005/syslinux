@@ -7,8 +7,8 @@
 #include <stdlib.h>
 #include "malloc.h"
 
-static struct free_arena_header *
-        __free_block(struct free_arena_header *ah) {
+static struct free_arena_header *__free_block(struct free_arena_header *ah)
+{
     struct free_arena_header *pah, *nah;
 
     pah = ah->a.prev;
@@ -74,7 +74,9 @@ void free(void *ptr)
     assert( ARENA_TYPE_GET(ah->a.attrs) == ARENA_TYPE_USED );
 #endif
 
+    sem_down(&__malloc_semaphore, 0);
     __free_block(ah);
+    sem_up(&__malloc_semaphore);
 
   /* Here we could insert code to return memory to the system. */
 }
@@ -90,7 +92,10 @@ void __inject_free_block(struct free_arena_header *ah)
     size_t a_end = (size_t) ah + ARENA_SIZE_GET(ah->a.attrs);
     size_t n_end;
 
-    for (nah = __malloc_head.a.next; ARENA_TYPE_GET(nah->a.attrs) != ARENA_TYPE_HEAD;
+    sem_down(&__malloc_semaphore, 0);
+
+    for (nah = __malloc_head.a.next;
+	 ARENA_TYPE_GET(nah->a.attrs) != ARENA_TYPE_HEAD;
          nah = nah->a.next) {
         n_end = (size_t) nah + ARENA_SIZE_GET(nah->a.attrs);
 
@@ -103,30 +108,39 @@ void __inject_free_block(struct free_arena_header *ah)
             continue;
 
         /* Otherwise we have some sort of overlap - reject this block */
-        return;
+	nah = NULL;
+	break;
     }
 
     /* Now, nah should point to the successor block */
-    ah->a.next = nah;
-    ah->a.prev = nah->a.prev;
-    nah->a.prev = ah;
-    ah->a.prev->a.next = ah;
+    if (nah) {
+	ah->a.next = nah;
+	ah->a.prev = nah->a.prev;
+	nah->a.prev = ah;
+	ah->a.prev->a.next = ah;
 
-    __free_block(ah);
+	__free_block(ah);
+    }
+
+    sem_up(&__malloc_semaphore);
 }
 
 
 void __free_tagged(void *tag) {
-	struct free_arena_header *fp, *nfp;
-
-	for (fp = __malloc_head.a.next, nfp = fp->a.next;
-			ARENA_TYPE_GET(fp->a.attrs) != ARENA_TYPE_HEAD;
-			fp = nfp, nfp = fp->a.next) {
-
-		if (ARENA_TYPE_GET(fp->a.attrs) == ARENA_TYPE_USED &&
-				fp->a.tag == tag) {
-			// Free this block
-			__free_block(fp);
-		}
+    struct free_arena_header *fp, *nfp;
+    
+    sem_down(&__malloc_semaphore, 0);
+	
+    for (fp = __malloc_head.a.next, nfp = fp->a.next;
+	 ARENA_TYPE_GET(fp->a.attrs) != ARENA_TYPE_HEAD;
+	 fp = nfp, nfp = fp->a.next) {
+	
+	if (ARENA_TYPE_GET(fp->a.attrs) == ARENA_TYPE_USED &&
+	    fp->a.tag == tag) {
+	    // Free this block
+	    __free_block(fp);
 	}
+    }
+
+    sem_up(&__malloc_semaphore);
 }

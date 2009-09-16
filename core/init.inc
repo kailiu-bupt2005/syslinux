@@ -74,6 +74,11 @@ dosram_k	equ (real_mode_seg+0x1000) >> 6	; Minimum DOS memory (K)
 enough_ram:
 skip_checks:
 
+;
+; Initialize the rest of the 32-bit environment
+;
+		pm_call init_env32
+
 		section .data16
 err_noram	db 'It appears your computer has less than '
 		asciidec dosram_k

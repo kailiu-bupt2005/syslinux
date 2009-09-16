@@ -4,8 +4,10 @@
 #include <fs.h>
 #include <minmax.h>
 #include <sys/cpu.h>
+#include <netinet/in.h>
 #include "pxe.h"
 #include "thread.h"
+#include "lwip/api.h"
 
 #define GPXE 1
 
@@ -1419,6 +1421,10 @@ static void udp_init(void)
 /*
  * Network-specific initialization
  */   
+err_t undi_tcpip_start(struct ip_addr *ipaddr,
+		       struct ip_addr *netmask,
+		       struct ip_addr *gw);
+
 static void network_init(void)
 {   
     struct bootp_t *bp = (struct bootp_t *)trackbuf;
@@ -1476,7 +1482,13 @@ static void network_init(void)
     if ((DHCPMagic & 1) == 0)
         DHCPMagic = 0;
 
+#if 1				/* new stuff */
+    undi_tcpip_start((struct ip_addr *)&MyIP,
+		     (struct ip_addr *)&net_mask,
+		     (struct ip_addr *)&gate_way);
+#else
     udp_init();
+#endif
 }
 
 /*

@@ -113,14 +113,14 @@ LIBCONSOLE_OBJS = \
 	syslinux/serial.o
 
 LIBOTHER_OBJS = \
-	atoi.o atol.o atoll.o calloc.o creat.o		\
+	atoi.o atol.o atoll.o calloc.o creat.o				\
 	ctypes.o errno.o fgetc.o fgets.o fopen.o fprintf.o fputc.o	\
 	fclose.o putchar.o ungetc.o setjmp.o				\
-	fputs.o fread2.o fread.o free.o fwrite2.o fwrite.o getopt.o	\
-	lrand48.o malloc.o stack.o memccpy.o memchr.o memcmp.o		\
+	fputs.o fread2.o fread.o fwrite2.o fwrite.o getopt.o		\
+	lrand48.o memccpy.o memchr.o memcmp.o				\
 	memcpy.o mempcpy.o memmem.o memmove.o memset.o memswap.o	\
-	perror.o printf.o puts.o qsort.o realloc.o seed48.o snprintf.o	\
-	sprintf.o srand48.o sscanf.o strcasecmp.o strcat.o	\
+	perror.o printf.o puts.o qsort.o seed48.o snprintf.o		\
+	sprintf.o srand48.o sscanf.o strcasecmp.o strcat.o		\
 	strchr.o strcmp.o strcpy.o strdup.o strerror.o strlen.o		\
 	strnlen.o							\
 	strncasecmp.o strncat.o strncmp.o strncpy.o strndup.o		\

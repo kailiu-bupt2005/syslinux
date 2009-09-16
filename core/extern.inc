@@ -13,7 +13,7 @@
 	extern hello
 
 	; elflink/load_env32.c
-	extern load_env32
+	extern init_env32
 
 	; fs.c
 	extern fs_init, searchdir, getfssec, mangle_name, load_config

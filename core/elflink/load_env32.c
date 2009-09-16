@@ -66,23 +66,28 @@ static void call_constr(void)
     }
 }
 
-/* note to self: do _*NOT*_ use static key word on this function */
-void load_env32(com32sys_t * regs)
+/*
+ * Initialize the mandatory part of the 32-bit environment
+ */
+void init_env32(com32sys_t *regs)
 {
     call_constr();
-    char *cmdline;
-    struct cli_command c1, c2, c3, *comm, *aux;
     openconsole(&dev_rawcon_r, &dev_ansiserial_w);
-    INIT_LIST_HEAD(&cli_history_head);
 
-    printf("Calling initilization constructor procedures...\n");
     printf("Starting 32 bit elf module subsystem...\n");
-    init_module_subsystem(&core_module);
-
     printf("Str table address: %d\n", core_module.str_table);
     printf("Sym table address: %d\n", core_module.sym_table);
     printf("Str table size: %d\n", core_module.strtable_size);
     printf("Sym table size: %d\n", core_module.symtable_size);
+    init_module_subsystem(&core_module);
+};    
+
+/* note to self: do _*NOT*_ use static key word on this function */
+void cli32(com32sys_t * regs)
+{
+    char *cmdline;
+    struct cli_command c1, c2, c3, *comm, *aux;
+    INIT_LIST_HEAD(&cli_history_head);
 
     c1.command = (char *)malloc(sizeof(char) * 16);
     c2.command = (char *)malloc(sizeof(char) * 16);

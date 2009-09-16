@@ -99,6 +99,7 @@ kwdhash.gen: keywords genhash.pl
 		> $(@:.elf=.map)
 	$(OBJDUMP) -h $@ > $(@:.elf=.sec)
 	$(PERL) lstadjust.pl $(@:.elf=.lsr) $(@:.elf=.sec) $(@:.elf=.lst)
+	$(NM) -n $@ | awk '{ print $$1 " " $$3; }' > $(@:.elf=.sym)
 
 $(LIB): $(LIBOBJS)
 	rm -f $@

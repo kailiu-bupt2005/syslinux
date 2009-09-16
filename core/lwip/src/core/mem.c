@@ -181,7 +181,8 @@ static struct mem *ram_end;
 static struct mem *lfree;
 
 /** concurrent access protection */
-static sys_sem_t mem_sem;
+DECLARE_INIT_SEMAPHORE(_mem_sem, 1);
+#define mem_sem (&_mem_sem)
 
 #if LWIP_ALLOW_MEM_FREE_FROM_OTHER_CONTEXT
 
@@ -279,7 +280,9 @@ mem_init(void)
   ram_end->next = MEM_SIZE_ALIGNED;
   ram_end->prev = MEM_SIZE_ALIGNED;
 
+#if 0
   mem_sem = sys_sem_new(1);
+#endif
 
   /* initialize the lowest-free pointer to the start of the heap */
   lfree = (struct mem *)ram;

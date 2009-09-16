@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include "thread.h"
 
 extern void __start_thread(void);
@@ -28,13 +29,15 @@ struct thread *start_thread(const char *name, size_t stack_size, int prio,
 	return NULL;
 
     t = (struct thread *)stack;
-    stack = (char *)(t + 1);	/* After the thread structure */
+    stack += sizeof(struct thread);
 
     memset(t, 0, sizeof *t);
 
     /* sp allocated from the end of the stack */
     sp = (struct thread_stack *)(stack + stack_size) - 1;
     t->esp = sp;
+
+    printf("Thread: %s @ %p, stack %p esp %p\n", name, t, stack, sp);
 
     sp->errno = 0;
     sp->esi = (size_t)start_func;

@@ -20,6 +20,7 @@
 *.rej
 *.s
 *.sec
+*.sym
 *.sys
 *_bin.c
 *.dyn
