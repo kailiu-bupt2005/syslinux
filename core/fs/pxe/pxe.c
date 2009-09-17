@@ -8,6 +8,7 @@
 #include "pxe.h"
 #include "thread.h"
 #include "lwip/api.h"
+#include "lwip/dns.h"
 
 #define GPXE 1
 
@@ -353,7 +354,7 @@ static int pxe_get_cached_info(int type)
     static __lowmem struct s_PXENV_GET_CACHED_INFO get_cached_info;
     printf(" %02x", type);
     
-    get_cached_info.Status      = 0;
+    memset(&get_cached_info, 0, sizeof get_cached_info);
     get_cached_info.PacketType  = type;
     get_cached_info.BufferSize  = 8192;
     get_cached_info.Buffer      = FAR_PTR(trackbuf);
@@ -1404,6 +1405,7 @@ static void pxe_init(void)
  * Initialize UDP stack 
  *
  */
+#if 0
 static void udp_init(void)
 {
     int err;
@@ -1416,7 +1418,67 @@ static void udp_init(void)
 	kaboom();
     }
 }
-  
+#endif
+
+static void lwip_test(void)
+{
+    err_t err;
+    struct ip_addr ip;
+    struct netconn *conn;
+    char header_buf[512];
+    int header_len;
+    static const char host_str[] = "www.zytor.com";
+    struct netbuf *buf;
+
+    /* Test the lwIP stack by trying to open a HTTP connection... */
+    printf("Starting lwIP test...\n");
+    err = netconn_gethostbyname(host_str, &ip);
+    printf("Gethostbyname: ip = %d.%d.%d.%d, err = %d\n",
+	   ((uint8_t *)&ip)[0],
+	   ((uint8_t *)&ip)[1],
+	   ((uint8_t *)&ip)[2],
+	   ((uint8_t *)&ip)[3],
+	   err);
+
+    conn = netconn_new(NETCONN_TCP);
+    printf("netconn_new returned %p\n", conn);
+
+    err = netconn_connect(conn, &ip, 80);
+    printf("netconn_connect error %d\n", err);
+
+    header_len = snprintf(header_buf, sizeof header_buf,
+			  "GET /lwip_test HTTP/1.0\r\n"
+			  "Host: %s\r\n"
+			  "\r\n",
+			  host_str);
+
+    err = netconn_write(conn, header_buf, header_len, NETCONN_NOCOPY);
+    printf("netconn_write error %d\n", err);
+    for (;;) {
+	void *data;
+	char *p;
+	u16_t len;
+
+	buf = netconn_recv(conn);
+	if (!buf)
+	    break;
+
+	netbuf_data(buf, &data, &len);
+
+	p = data;
+	while (len--)
+	    putchar (*p++);
+
+	netbuf_delete(buf);
+    }
+	
+    printf("\n[End transmission]\n");
+
+    netconn_disconnect(conn);
+
+    for(;;)
+	asm volatile("hlt");
+}
     
 /*
  * Network-specific initialization
@@ -1429,6 +1491,7 @@ static void network_init(void)
 {   
     struct bootp_t *bp = (struct bootp_t *)trackbuf;
     int pkt_len;
+    int i;
 
     *LocalDomain = 0;   /* No LocalDomain received */
     
@@ -1483,9 +1546,24 @@ static void network_init(void)
         DHCPMagic = 0;
 
 #if 1				/* new stuff */
+    printf("undi_tcpip_start...\n");
     undi_tcpip_start((struct ip_addr *)&MyIP,
 		     (struct ip_addr *)&net_mask,
 		     (struct ip_addr *)&gate_way);
+
+    for (i = 0; i < DNS_MAX_SERVERS; i++) {
+	/* Transfer the DNS information to lwip */
+	printf("DNS server %d = %d.%d.%d.%d\n",
+	       i,
+	       ((uint8_t *)&dns_server[i])[0],
+	       ((uint8_t *)&dns_server[i])[1],
+	       ((uint8_t *)&dns_server[i])[2],
+	       ((uint8_t *)&dns_server[i])[3]);
+	dns_setserver(i, (struct ip_addr *)&dns_server[i]);
+    }
+
+    printf("lwip_test...\n");
+    lwip_test();
 #else
     udp_init();
 #endif

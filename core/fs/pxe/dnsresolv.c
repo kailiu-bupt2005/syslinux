@@ -46,7 +46,7 @@ struct dnsrr {
 } __attribute__ ((packed));
 
 
-uint32_t dns_server[DNS_MAX_SERVERS] = {0, };
+uint32_t dns_server[DNS_MAX_SERVERS];
 
 
 /*

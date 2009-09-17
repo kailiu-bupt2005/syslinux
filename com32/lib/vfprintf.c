@@ -7,7 +7,7 @@
 #include <stdarg.h>
 #include <unistd.h>
 
-#define BUFFER_SIZE	32768
+#define BUFFER_SIZE	1024
 
 int vfprintf(FILE * file, const char *format, va_list ap)
 {
