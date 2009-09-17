@@ -10,7 +10,8 @@
 typedef uint32_t jiffies_t;
 typedef int32_t  sjiffies_t;
 
-extern const volatile jiffies_t __jiffies;
+extern volatile jiffies_t __jiffies;
+
 static inline jiffies_t jiffies(void)
 {
     return __jiffies;
