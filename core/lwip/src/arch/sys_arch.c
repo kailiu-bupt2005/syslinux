@@ -76,3 +76,8 @@ u32_t sys_arch_mbox_tryfetch(sys_mbox_t mbox, void **msg)
 {
     return mbox_fetch(mbox, msg, -1);
 }
+
+u32_t sys_now(void)
+{
+    return jiffies() * MS_PER_JIFFY;
+}
