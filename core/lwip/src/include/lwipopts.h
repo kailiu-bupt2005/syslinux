@@ -13,12 +13,12 @@
 #endif
 #define MEM_USE_POOLS_TRY_BIGGER_POOL	1
 
-#define TCPIP_MBOX_SIZE         	64
+#define TCPIP_MBOX_SIZE         	512
 #define TCPIP_THREAD_PRIO		0
 #define TCPIP_THREAD_STACKSIZE		32768
 
 #define DEFAULT_UDP_RECVMBOX_SIZE	16
-#define DEFAULT_TCP_RECVMBOX_SIZE	16
+#define DEFAULT_TCP_RECVMBOX_SIZE	128
 #define DEFAULT_ACCEPTMBOX_SIZE		4
 
 #define LWIP_SOCKET			0
@@ -35,7 +35,7 @@
 #define MEMP_NUM_TCPIP_MSG_INPKT	64
 #define PBUF_POOL_SIZE			256
 #define ARP_TABLE_SIZE			16
-#define IP_REASS_MAX_PBUFS		32
+#define IP_REASS_MAX_PBUFS		64
 #define IP_REASS_MAXAGE			10
 
 #define LWIP_NETIF_API		1
@@ -43,8 +43,8 @@
 #define LWIP_DNS		1
 #define DNS_TABLE_SIZE		16
 #define DNS_MAX_SERVERS		4
-#define TCP_WND			32768
-#define TCP_MSS			4096
+#define TCP_WND			0xff00
+#define TCP_MSS			1460
 #define TCP_SND_BUF		4096
 
 #define ETHARP_TRUST_IP_MAC	0
