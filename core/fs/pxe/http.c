@@ -14,13 +14,15 @@
 #include "thread.h"
 #include "strbuf.h"
 #include "url.h"
+#include "netstream.h"
 #include "lwip/api.h"
 #include "lwip/dns.h"
 
-struct file *http_open(struct url_info *url, struct strbuf **redirect)
+int http_open(struct file *file, struct url_info *url,
+	      struct strbuf **redirect)
 {
     const char *p;
-    char c;
+    int c;
     int err;
     struct ip_addr ip;
     struct netconn *conn = NULL;
@@ -44,7 +46,8 @@ struct file *http_open(struct url_info *url, struct strbuf **redirect)
     struct strbuf *header_data = NULL;
     int64_t content_length;
     char *ep;
-    struct file *file;
+    int rv = -1;
+    struct open_file_t *of = file->open_file;
 
     *redirect = NULL;
 
@@ -73,19 +76,19 @@ struct file *http_open(struct url_info *url, struct strbuf **redirect)
 
     /* XXX: implement at least basic authentication here */
 
+    memset(&of->data, 0, sizeof of->data);
+
     err = netconn_gethostbyname(url->host, &ip);
     if (err)
 	return NULL;
 
-    file = NULL;
-
-    conn = netconn_new(NETCONN_TCP);
-    err = netconn_connect(conn, &ip, url->port ? url->port : 80);
+    of->data.conn = conn = netconn_new(NETCONN_TCP);
+    err = netconn_connect(of->data.conn, &ip, url->port ? url->port : 80);
     if (err)
 	goto err_delete;
 
-    err = netconn_write(conn, strbuf_str(http_header), strbuf_len(http_header),
-			NETCONN_NOCOPY);
+    err = netconn_write(of->data.conn, strbuf_str(http_header),
+			strbuf_len(http_header), NETCONN_NOCOPY);
     if (err)
 	goto err_disconnect;
 
@@ -99,117 +102,100 @@ struct file *http_open(struct url_info *url, struct strbuf **redirect)
     content_length = -1;
 
     while (state != st_eoh) {
-	void *data;
-	u16_t len;
-	
-	buf = netconn_recv(conn);
-	if (!buf)
+	c = netstream_getc(&of->data);
+	if (c == -1)
 	    break;
+
+	if (c == '\r' || c == '\0')
+	    continue;
 	
-	do {
-	    netbuf_data(buf, &data, &len);
-	    
-	    p = data;
-	    while (state != st_eoh && len) {
-		c = *p++;
-		len--;
-
-		if (c == '\r' || c == '\0')
-		    continue;
-
-		switch (state) {
-		case st_httpver:
-		    if (c == ' ') {
-			state = st_stcode;
-			pos = 0;
-		    }
-		    break;
-
-		case st_stcode:
-		    if (c < '0' || c > '9')
-			goto err_disconnect ;
-		    status = (status*10) + (c - '0');
-		    if (++pos == 3)
-			state = st_skipline;
-		    break;
-
-		case st_skipline:
-		    if (c == '\n') {
-			state = st_headerfirst;
-			pos = 0;
-		    }
-		    break;
-
-		case st_headerfirst:
-		    if (c == '\n') {
-			state = st_eoh;
-			break;
-		    } else if (isspace(c)) {
-			state = st_skipline;
-			break;
-		    }
-		    /* else fall through */
-		    
-		case st_header:
-		    if (!isspace(c)) {
-			strbuf_putc(&header_name, c);
-			break;
-		    }
-		    /* else fall through */
-
-		case st_headergap:
-		    if (c == '\n')
-			state = st_contline;
-		    else if (!isspace(c)) {
-			strbuf_putc(&header_data, c);
-			state = st_headertoken;
-		    }
-		    break;
-
-		case st_contline:
-		    if (c == '\n') {
-			strbuf_free(&header_name);
-			state = st_eoh;
-		    } else if (isspace(c)) {
-			state = st_headergap;
-		    } else {
-			strbuf_putc(&header_data, c);
-			state = st_headertoken;
-		    }
-		    break;
-
-		case st_headertoken:
-		    if (isspace(c)) {
-			state = (c == '\n') ? st_headerfirst : st_skipline;
-
-			if (!strcasecmp("Location:",
-					strbuf_str(header_name))) {
-			    location = header_data;
-			    header_data = NULL;
-			} else if (!strcasecmp("Content-Length:",
-					       strbuf_str(header_name))) {
-			    content_length =
-				strtoull(strbuf_str(header_data), &ep, 10);
-			    if (*ep)
-				content_length = -1;
-			    strbuf_free(&header_data);
-			} else {
-			    strbuf_free(&header_data);
-			}
-			strbuf_free(&header_name);
-		    } else {
-			strbuf_putc(&header_data, c);
-		    }
-		    break;
-		    
-		case st_eoh:
-		    break;	/* Should never happen */
-		}
+	switch (state) {
+	case st_httpver:
+	    if (c == ' ') {
+		state = st_stcode;
+		pos = 0;
 	    }
-	} while (state != st_eoh && netbuf_next(buf) >= 0);
-
-	if (state != st_eoh)
-	    netbuf_delete(buf);
+	    break;
+	    
+	case st_stcode:
+	    if (c < '0' || c > '9')
+		goto err_disconnect ;
+	    status = (status*10) + (c - '0');
+	    if (++pos == 3)
+		state = st_skipline;
+	    break;
+	    
+	case st_skipline:
+	    if (c == '\n') {
+		state = st_headerfirst;
+		pos = 0;
+	    }
+	    break;
+	    
+	case st_headerfirst:
+	    if (c == '\n') {
+		state = st_eoh;
+		break;
+	    } else if (isspace(c)) {
+		state = st_skipline;
+		break;
+	    }
+	    /* else fall through */
+	    
+	case st_header:
+	    if (!isspace(c)) {
+		strbuf_putc(&header_name, c);
+		break;
+	    }
+	    /* else fall through */
+	    
+	case st_headergap:
+	    if (c == '\n')
+		state = st_contline;
+	    else if (!isspace(c)) {
+		strbuf_putc(&header_data, c);
+		state = st_headertoken;
+	    }
+	    break;
+	    
+	case st_contline:
+	    if (c == '\n') {
+		strbuf_free(&header_name);
+		state = st_eoh;
+	    } else if (isspace(c)) {
+		state = st_headergap;
+	    } else {
+		strbuf_putc(&header_data, c);
+		state = st_headertoken;
+	    }
+	    break;
+	    
+	case st_headertoken:
+	    if (isspace(c)) {
+		state = (c == '\n') ? st_headerfirst : st_skipline;
+		
+		if (!strcasecmp("Location:", strbuf_str(header_name))) {
+		    location = header_data;
+		    header_data = NULL;
+		} else if (!strcasecmp("Content-Length:",
+				       strbuf_str(header_name))) {
+		    content_length =
+			strtoull(strbuf_str(header_data), &ep, 10);
+		    if (*ep)
+			content_length = -1;
+		    strbuf_free(&header_data);
+		} else {
+		    strbuf_free(&header_data);
+		}
+		strbuf_free(&header_name);
+	    } else {
+		strbuf_putc(&header_data, c);
+	    }
+	    break;
+	    
+	case st_eoh:
+	    break;	/* Should never happen */
+	}
     }
 
     if (state != st_eoh)
@@ -240,12 +226,14 @@ err_disconnect:
     strbuf_free(&header_data);
     strbuf_free(&location);
 
-    if (file)
-	return file;
+    if (!rv)
+	return rv;
 
-    netconn_disconnect(conn);
+    if (of->data.buf)
+	netbuf_delete(of->data.buf);
+    netconn_disconnect(of->data.conn);
 err_delete:
-    netconn_delete(conn);
-    return NULL;
+    netconn_delete(of->data.conn);
+    return rv;
 }
 
