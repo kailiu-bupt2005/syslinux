@@ -15,37 +15,44 @@
 
 struct strbuf __strbuf_error_buf = {
     .size = 0,
-    .len  = -1,
+    .len  = 0,
+    .str  = ""
 };
 
-void strbuf_free(struct strbuf *buf)
+void strbuf_free(struct strbuf **bufp)
 {
-    if (buf != &__strbuf_error_buf)
-	free(buf);
+    if (*bufp != &__strbuf_error_buf)
+	free(*bufp);
+    *bufp = NULL;
 }
 
-struct strbuf *strbuf_cat(struct strbuf *buf, const char *str)
+#if 0
+
+void *strbuf_cat(struct strbuf **bufp, const char *str)
 {
     struct strbuf *buf, *xbuf;
     size_t len = strlen(str);
     size_t size;
 
+    buf = *bufp;
+
     if (buf == &__strbuf_error_buf)
-	return buf;		/* Buffer in error state */
-	return buf;
+	return;
 
     if (!buf) {
 	size = (len+SIZESTEP) & ~(SIZESTEP-1);
 	if (size < MINSIZE)
 	    size = MINSIZE;
 	buf = malloc(sizeof(struct strbuf) + MINSIZE);
-	if (!buf)
-	    return &__strbuf_error_buf;
+	if (!buf) {
+	    *bufp = &__strbuf_error_buf;
+	    return;
+	}
 
 	buf->len  = len;
 	buf->size = size;
 	memcpy(buf->str, str, len+1);
-	return buf;
+	return;
     }
 
     if (buf->size - buf->len > len) {
@@ -53,18 +60,34 @@ struct strbuf *strbuf_cat(struct strbuf *buf, const char *str)
 	xbuf = realloc(buf, sizeof(struct strbuf) + MINSIZE);
 	if (!xbuf) {
 	    free(buf);
-	    return &__strbuf_error_buf;
+	    *bufp = &__strbuf_error_buf;
+	    return;
 	}
-	buf = xbuf;
+	*bufp = buf = xbuf;
 	buf->size = size;
     }
 
     memcpy(buf->str + buf->len, str, len+1);
     buf->len += len;
-    return buf;
 }
 
-struct strbuf *sbprintf(struct strbuf *buf, const char *fmt, ...)
+#else
+void strbuf_cat(struct strbuf **bufp, const char *str)
+{
+    return sbprintf(bufp, "%s", str);
+}
+#endif
+
+void strbuf_putc(struct strbuf **bufp, char c)
+{
+    char str[2];
+
+    str[0] = c;
+    str[1] = '\0';
+    return strbuf_cat(bufp, str);
+}
+
+void sbprintf(struct strbuf **bufp, const char *fmt, ...)
 {
     struct strbuf *buf, *xbuf;
     size_t len;
@@ -73,8 +96,10 @@ struct strbuf *sbprintf(struct strbuf *buf, const char *fmt, ...)
     va_list ap;
     char *p;
 
+    buf = *bufp;
+
     if (buf == &__strbuf_error_buf)
-	return buf;		/* Buffer in error state */
+	return;			/* Buffer in error state */
 
     va_start(ap, fmt);
 
@@ -91,7 +116,7 @@ struct strbuf *sbprintf(struct strbuf *buf, const char *fmt, ...)
 
     if (len < slack) {
 	buf->len += len;
-	return buf;		/* It all fit */
+	return;			/* It all fit */
     }
 
     size = (strbuf_len(buf) + len + SIZESTEP) & ~SIZESTEP;
@@ -101,11 +126,12 @@ struct strbuf *sbprintf(struct strbuf *buf, const char *fmt, ...)
     xbuf = realloc(buf, sizeof(struct strbuf) + size);
     if (!xbuf) {
 	free(buf);
-	return &__strbuf_error_buf;
+	*bufp = &__strbuf_error_buf;
+	return;
     }
     if (!buf)
 	xbuf->len = 0;
-    buf = xbuf;
+    *bufp = buf = xbuf;
 
     buf->size = size;
 
@@ -114,5 +140,4 @@ struct strbuf *sbprintf(struct strbuf *buf, const char *fmt, ...)
     va_end(ap);
 
     buf->len += len;
-    return buf;
 }

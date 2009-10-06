@@ -14,17 +14,18 @@ struct strbuf {
     char str[];
 };
 
-struct strbuf *strbuf_cat(struct strbuf *, const char *);
-struct strbuf *sbprintf(struct strbuf *, const char *, ...);
-void strbuf_free(struct strbuf *);
+void strbuf_cat(struct strbuf **, const char *);
+void strbuf_putc(struct strbuf **, char);
+void sbprintf(struct strbuf **, const char *, ...);
+void strbuf_free(struct strbuf **);
 
 static inline const char *strbuf_str(struct strbuf *__sb)
 {
-    return __sb ? __sb.str : NULL;
+    return __sb ? __sb->str : "";
 }
 static inline size_t strbuf_len(struct strbuf *__sb)
 {
-    return __sb ? __sb.len : 0;
+    return __sb ? __sb->len : 0;
 }
 
 extern struct strbuf __strbuf_error_buf;
