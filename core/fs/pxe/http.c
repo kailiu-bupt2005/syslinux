@@ -26,7 +26,6 @@ int http_open(struct file *file, struct url_info *url,
     int err;
     struct ip_addr ip;
     struct netconn *conn = NULL;
-    struct netbuf *buf = NULL;
     int pos;
     enum state {
 	st_httpver,
@@ -67,12 +66,13 @@ int http_open(struct file *file, struct url_info *url,
 	     " HTTP/1.0\r\n"
 	     "Host: %s\r\n"
 	     "User-Agent: %s\r\n"
+	     "Connection: close\r\n"
 	     "\r\n",
 	     url->host,
 	     "PXELINUX/something-or-other");
 
     if (strbuf_error(http_header))
-	return NULL;
+	return -1;
 
     /* XXX: implement at least basic authentication here */
 
@@ -80,7 +80,7 @@ int http_open(struct file *file, struct url_info *url,
 
     err = netconn_gethostbyname(url->host, &ip);
     if (err)
-	return NULL;
+	return -1;
 
     of->data.conn = conn = netconn_new(NETCONN_TCP);
     err = netconn_connect(of->data.conn, &ip, url->port ? url->port : 80);
