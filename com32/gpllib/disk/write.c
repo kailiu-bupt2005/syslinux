@@ -37,9 +37,9 @@ int write_sectors(const struct driveinfo *drive_info, const unsigned int lba,
 {
     com32sys_t inreg, outreg;
     struct ebios_dapa *dapa = __com32.cs_bounce;
-    void *buf = (char *)__com32.cs_bounce + size;
+    void *buf = (char *)__com32.cs_bounce + SECTOR * size;
 
-    memcpy(buf, data, size);
+    memcpy(buf, data, SECTOR * size);
     memset(&inreg, 0, sizeof inreg);
 
     if (drive_info->ebios) {
@@ -97,7 +97,7 @@ int write_sectors(const struct driveinfo *drive_info, const unsigned int lba,
 int write_verify_sector(struct driveinfo *drive_info,
 			const unsigned int lba, const void *data)
 {
-    return write_verify_sectors(drive_info, lba, data, SECTOR);
+    return write_verify_sectors(drive_info, lba, data, 1);
 }
 
 /**
