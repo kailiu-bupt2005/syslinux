@@ -22,6 +22,8 @@
 #include <disk/util.h>
 #include <disk/write.h>
 
+#define MAX_TRANSFER 127
+
 /**
  * write_sectors - write several sectors from disk
  * @drive_info:		driveinfo struct describing the disk
@@ -38,6 +40,10 @@ int write_sectors(const struct driveinfo *drive_info, const unsigned int lba,
     com32sys_t inreg, outreg;
     struct ebios_dapa *dapa = __com32.cs_bounce;
     void *buf = (char *)__com32.cs_bounce + SECTOR * size;
+
+    // The core caps at 127 sectors per call
+    if (size > MAX_TRANSFER)
+        return -1;
 
     memcpy(buf, data, SECTOR * size);
     memset(&inreg, 0, sizeof inreg);
