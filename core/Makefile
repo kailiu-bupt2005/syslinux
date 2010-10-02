@@ -24,7 +24,8 @@ include $(topdir)/MCONFIG.embedded
 -include $(topdir)/version.mk
 
 OPTFLAGS =
-INCLUDES = -I./include -I$(com32)/include
+INCLUDES = -I./include -I$(com32)/include \
+	-I./lwip/src/include -I./lwip/src/include/ipv4
 
 # This is very similar to cp437; technically it's for Norway and Denmark,
 # but it's unlikely the characters that are different will be used in
@@ -39,9 +40,9 @@ BTARGET  = kwdhash.gen \
 # All primary source files for the main syslinux files
 NASMSRC	 := $(wildcard *.asm)
 NASMHDR  := $(wildcard *.inc)
-CSRC	 := $(wildcard *.c */*.c */*/*.c)
-SSRC	 := $(wildcard *.S */*.S */*/*.S)
-CHDR	 := $(wildcard *.h */*.h */*/*.h)
+CSRC	 := $(shell find . -name '*.c' -print)
+SSRC	 := $(shell find . -name '*.S' -print)
+CHDR	 := $(shell find . -name '*.h' -print)
 OTHERSRC := keywords
 ALLSRC    = $(NASMSRC) $(NASMHDR) $(CSRC) $(SSRC) $(CHDR) $(OTHERSRC)
 
@@ -94,6 +95,7 @@ kwdhash.gen: keywords genhash.pl
 		> $(@:.elf=.map)
 	$(OBJDUMP) -h $@ > $(@:.elf=.sec)
 	$(PERL) lstadjust.pl $(@:.elf=.lsr) $(@:.elf=.sec) $(@:.elf=.lst)
+	$(NM) -n $@ | awk '{ print $$1 " " $$3; }' > $(@:.elf=.sym)
 
 $(LIB): $(LIBOBJS)
 	rm -f $@
@@ -123,7 +125,9 @@ install-all: install install-lib
 netinstall: installer
 
 tidy dist:
-	rm -f codepage.cp *.o *.elf *.a stupid.* patch.offset .depend .*.d
+	find . -type f \( -name '*.o' -o -name '*.a' -o -name '.*.d' \
+		-o -name '*.lst' \) -print | xargs -rt rm -f
+	rm -f codepage.cp *.elf stupid.* patch.offset .depend
 	rm -f *.elf.tmp *.sym
 	rm -f *.lsr *.lst *.map *.sec *.raw
 	rm -f */*.o */*/*.o */*.lst */*/*.lst */.*.d */*/.*.d
@@ -135,4 +139,5 @@ spotless: clean
 	rm -f $(BTARGET) *.bin *_bin.c
 
 # Include dependencies file
--include .*.d */.*.d */*/.*.d
+-include $(shell find . -name '.*.d' -print)
+

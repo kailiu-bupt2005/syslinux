@@ -6,6 +6,9 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "thread.h"
+
+extern struct semaphore __malloc_semaphore;
 
 /*
  * This is the minimum chunk size we will ask the kernel for; this should

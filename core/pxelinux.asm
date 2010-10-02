@@ -364,11 +364,17 @@ kaboom:
 pxenv:
 		pushfd
 		pushad
-
+%if USE_PXE_PROVIDED_STACK == 0
+		pushf
+		cli
+		inc word [cs:PXEStackLock]
+		jnz .skip1
 		mov [cs:PXEStack],sp
 		mov [cs:PXEStack+2],ss
 		lss sp,[cs:InitStack]
-
+.skip1:
+		popf
+%endif
 		; Pre-clear the Status field
 		mov word [es:di],cs
 
@@ -381,9 +387,15 @@ pxenv:
 .jump:		call 0:0
 		add sp,6
 		mov [cs:PXEStatus],ax
-
+%if USE_PXE_PROVIDED_STACK == 0
+		pushf
+		cli
+		dec word [cs:PXEStackLock]
+		jns .skip2
 		lss sp,[cs:PXEStack]
-
+.skip2:
+		popf
+%endif
 		mov bp,sp
 		and ax,ax
 		setnz [bp+32]			; If AX != 0 set CF on return
@@ -397,6 +409,16 @@ pxenv:
 ; Must be after function def due to NASM bug
                 global PXEEntry
 PXEEntry	equ pxenv.jump+1
+
+;
+; The PXEStackLock keeps us from switching stacks if we take an interrupt
+; (which ends up calling pxenv) while we are already on the PXE stack.
+; It will be -1 normally, 0 inside a PXE call, and a positive value
+; inside a *nested* PXE call.
+;
+		section .data16
+		alignb 2
+PXEStackLock	dw -1
 
 		section .bss16
 		alignb 2
@@ -419,68 +441,11 @@ pxe_int1a:
 		lss sp,[cs:PXEStack]
 		ret
 
-;
-; Special unload for gPXE: this switches the InitStack from
-; gPXE to the ROM PXE stack.
-;
-%if GPXE
-		global gpxe_unload
-gpxe_unload:
-		mov bx,PXENV_FILE_EXIT_HOOK
-		mov di,pxe_file_exit_hook
-		call pxenv
-		jc .plain
+; -----------------------------------------------------------------------------
+;  PXE modules
+; -----------------------------------------------------------------------------
 
-		; Now we actually need to exit back to gPXE, which will
-		; give control back to us on the *new* "original stack"...
-		pushfd
-		push ds
-		push es
-		mov [PXEStack],sp
-		mov [PXEStack+2],ss
-		lss sp,[InitStack]
-		pop gs
-		pop fs
-		pop es
-		pop ds
-		popad
-		popfd
-		xor ax,ax
-		retf
-.resume:
-		cli
-
-		; gPXE will have a stack frame looking much like our
-		; InitStack, except it has a magic cookie at the top,
-		; and the segment registers are in reverse order.
-		pop eax
-		pop ax
-		pop bx
-		pop cx
-		pop dx
-		push ax
-		push bx
-		push cx
-		push dx
-		mov [cs:InitStack],sp
-		mov [cs:InitStack+2],ss
-		lss sp,[cs:PXEStack]
-		pop es
-		pop ds
-		popfd
-
-.plain:
-		ret
-
-		section .data16
-		alignz 4
-pxe_file_exit_hook:
-.status:	dw 0
-.offset:	dw gpxe_unload.resume
-.seg:		dw 0
-%endif
-
-		section .text16
+%include "pxeisr.inc"
 
 ; -----------------------------------------------------------------------------
 ;  Common modules

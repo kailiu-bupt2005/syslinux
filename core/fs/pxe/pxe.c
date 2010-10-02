@@ -5,7 +5,11 @@
 #include <fs.h>
 #include <minmax.h>
 #include <sys/cpu.h>
+#include <netinet/in.h>
 #include "pxe.h"
+#include "thread.h"
+#include "lwip/api.h"
+#include "lwip/dns.h"
 
 #define GPXE 1
 
@@ -351,7 +355,7 @@ static int pxe_get_cached_info(int type)
     static __lowmem struct s_PXENV_GET_CACHED_INFO get_cached_info;
     printf(" %02x", type);
 
-    get_cached_info.Status      = 0;
+    memset(&get_cached_info, 0, sizeof get_cached_info);
     get_cached_info.PacketType  = type;
     get_cached_info.BufferSize  = 8192;
     get_cached_info.Buffer      = FAR_PTR(trackbuf);
@@ -1434,6 +1438,7 @@ static void gpxe_init(void)
  * Initialize UDP stack
  *
  */
+#if 0
 static void udp_init(void)
 {
     int err;
@@ -1446,15 +1451,141 @@ static void udp_init(void)
 	kaboom();
     }
 }
+#endif
 
+static void undi_clear_stats(void)
+{
+    static __lowmem t_PXENV_UNDI_CLEAR_STATISTICS clear;
 
+    pxe_call(PXENV_UNDI_CLEAR_STATISTICS, &clear);
+}
+
+static void undi_stats(void)
+{
+    static __lowmem t_PXENV_UNDI_GET_STATISTICS stats;
+
+    pxe_call(PXENV_UNDI_GET_STATISTICS, &stats);
+
+    printf("UNDI: Xmit %u Rcv %u CRC %u Resource %u\n",
+	   stats.XmtGoodFrames, stats.RcvGoodFrames,
+	   stats.RcvCRCErrors, stats.RcvResourceErrors);
+}
+
+static void lwip_test(void)
+{
+    err_t err;
+    struct ip_addr ip;
+    struct netconn *conn;
+    char header_buf[512];
+    int header_len;
+    static const char host_str[] = "www3.kernel.org";
+    static const char path_str[] = "/pub/linux/kernel/v2.6/linux-2.6.31.tar.gz";
+    struct netbuf *buf;
+    jiffies_t t0, t1;
+    size_t bytes, x_bytes;
+    size_t ms, kbits_per_sec;
+    bool found_eoh;
+    int found_nl;
+    int i;
+
+    /* Test the lwIP stack by trying to open a HTTP connection... */
+    printf("Starting lwIP test...\n");
+    err = netconn_gethostbyname(host_str, &ip);
+    printf("Gethostbyname: ip = %d.%d.%d.%d, err = %d\n",
+	   ((uint8_t *)&ip)[0],
+	   ((uint8_t *)&ip)[1],
+	   ((uint8_t *)&ip)[2],
+	   ((uint8_t *)&ip)[3],
+	   err);
+
+    for (i = 1; i < 10; i++) {
+	undi_clear_stats();
+
+	conn = netconn_new(NETCONN_TCP);
+	err = netconn_connect(conn, &ip, 80);
+	if (err) {
+	    printf("netconn_connect error %d\n", err);
+	    continue;
+	}
+	
+	header_len = snprintf(header_buf, sizeof header_buf,
+			      "GET %s HTTP/1.0\r\n"
+			      "Host: %s\r\n"
+			      "\r\n",
+			      path_str, host_str);
+	
+	err = netconn_write(conn, header_buf, header_len, NETCONN_NOCOPY);
+	if (err)
+	    printf("netconn_write error %d\n", err);
+	bytes = x_bytes = 0;
+	found_nl = 0;
+	found_eoh = false;
+	
+	t0 = jiffies();
+	for (;;) {
+	    void *data;
+	    char *p;
+	    u16_t len;
+	    
+	    buf = netconn_recv(conn);
+	    if (!buf)
+		break;
+	    
+	    do {
+		netbuf_data(buf, &data, &len);
+		p = data;
+		while (__unlikely(!found_eoh && len)) {
+		    switch (*p) {
+		    case '\r':
+			break;
+		    case '\n':
+			if (++found_nl == 2)
+			    found_eoh = true;
+			break;
+		    default:
+			found_nl = 0;
+			break;
+		    }
+		    p++;
+		    len--;
+		}
+		bytes += len;
+		if ((bytes^x_bytes) >> 20) {
+		    printf("%dM\r", bytes >> 20);
+		    x_bytes = bytes;
+		}
+	    } while (netbuf_next(buf) >= 0);
+	    
+	    netbuf_delete(buf);
+	}
+	t1 = jiffies();
+	ms = (t1-t0) * MS_PER_JIFFY;
+
+	kbits_per_sec = (bytes << 3) / ms;
+
+	printf("Done: %zu bytes in %u ms (%u.%03u Mbps)\n",
+	       bytes, ms, kbits_per_sec/1000, kbits_per_sec%1000);
+	undi_stats();
+
+	netconn_disconnect(conn);
+    }
+
+    for(;;)
+	asm volatile("hlt");
+}
+    
 /*
  * Network-specific initialization
- */
+ */   
+err_t undi_tcpip_start(struct ip_addr *ipaddr,
+		       struct ip_addr *netmask,
+		       struct ip_addr *gw);
+
 static void network_init(void)
 {
     struct bootp_t *bp = (struct bootp_t *)trackbuf;
     int pkt_len;
+    int i;
 
     *LocalDomain = 0;   /* No LocalDomain received */
 
@@ -1510,7 +1641,28 @@ static void network_init(void)
     if ((DHCPMagic & 1) == 0)
         DHCPMagic = 0;
 
+#if 1				/* new stuff */
+    printf("undi_tcpip_start...\n");
+    undi_tcpip_start((struct ip_addr *)&MyIP,
+		     (struct ip_addr *)&net_mask,
+		     (struct ip_addr *)&gate_way);
+
+    for (i = 0; i < DNS_MAX_SERVERS; i++) {
+	/* Transfer the DNS information to lwip */
+	printf("DNS server %d = %d.%d.%d.%d\n",
+	       i,
+	       ((uint8_t *)&dns_server[i])[0],
+	       ((uint8_t *)&dns_server[i])[1],
+	       ((uint8_t *)&dns_server[i])[2],
+	       ((uint8_t *)&dns_server[i])[3]);
+	dns_setserver(i, (struct ip_addr *)&dns_server[i]);
+    }
+
+    printf("lwip_test...\n");
+    lwip_test();
+#else
     udp_init();
+#endif
 }
 
 /*
@@ -1519,7 +1671,13 @@ static void network_init(void)
  */
 static int pxe_fs_init(struct fs_info *fs)
 {
+    extern void pxe_init_isr(void); /* XXX */
     (void)fs;    /* drop the compile warning message */
+
+    pxe_init_isr();
+
+    /* Initialize the Files structure */
+    files_init();
 
     /* This block size is actually arbitrary... */
     fs->sector_shift = fs->block_shift = TFTP_BLOCKSIZE_LG2;

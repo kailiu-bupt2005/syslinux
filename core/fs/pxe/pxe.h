@@ -21,6 +21,8 @@
 #define PXE_H
 
 #include <syslinux/pxe_api.h>
+#include "lwip/api.h"
+#include "netstream.h"
 #include "fs.h"			/* For MAX_OPEN, should go away */
 
 /*
@@ -149,10 +151,10 @@ struct bootp_t {
     uint8_t  options[1260]; /* Vendor options */
 } __attribute__ ((packed));
 
-/*
- * Our inode private information -- this includes the packet buffer!
- */
-struct pxe_pvt_inode {
+struct open_file_t {
+    struct netstream data;	/* Data network connection */
+    struct netstream ctl;	/* Control network connection (used by FTP) */
+
     uint16_t tftp_localport;   /* Local port number  (0=not in us)*/
     uint16_t tftp_remoteport;  /* Remote port number */
     uint32_t tftp_remoteip;    /* Remote IP address */

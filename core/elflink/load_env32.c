@@ -109,8 +109,10 @@ void start_ui(char *config_file)
 	enter_cmdline();
 }
 
-/* note to self: do _*NOT*_ use static key word on this function */
-void load_env32(com32sys_t * regs)
+/*
+ * Initialize the mandatory part of the 32-bit environment
+ */
+void init_env32(com32sys_t *regs)
 {
 	printf("Starting 32 bit elf module subsystem...\n");
 	call_constr();

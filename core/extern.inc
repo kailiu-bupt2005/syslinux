@@ -16,20 +16,7 @@
 	extern abort_load_new
 
 	; elflink/load_env32.c
-	extern load_env32, enter_cmdline
-
-	; memscan.c
-	extern highmem_init
-
-	extern linux_kernel
-
-	extern mp1, mp2, mp3, mp4, mp5
-
-	extern hexdump, mydump
-
-	extern printf_init
-
-	extern mem_init
+	extern init_env32
 
 	; fs.c
 	extern fs_init, pm_searchdir, getfssec, getfsbytes

@@ -57,6 +57,27 @@ static struct free_arena_header *__free_block(struct free_arena_header *ah)
     return ah;
 }
 
+void free(void *ptr)
+{
+    struct free_arena_header *ah;
+
+    if ( !ptr )
+        return;
+
+    ah = (struct free_arena_header *)
+        ((struct arena_header *)ptr - 1);
+
+#ifdef DEBUG_MALLOC
+    assert( ARENA_TYPE_GET(ah->a.attrs) == ARENA_TYPE_USED );
+#endif
+
+    sem_down(&__malloc_semaphore, 0);
+    __free_block(ah);
+    sem_up(&__malloc_semaphore);
+
+  /* Here we could insert code to return memory to the system. */
+}
+
 /*
  * This is used to insert a block which is not previously on the
  * free list.  Only the a.size field of the arena header is assumed
@@ -68,9 +89,12 @@ void __inject_free_block(struct free_arena_header *ah)
     size_t a_end = (size_t) ah + ah->a.size;
     size_t n_end;
 
-    for (nah = __malloc_head.a.next; nah->a.type != ARENA_TYPE_HEAD;
-	 nah = nah->a.next) {
-	n_end = (size_t) nah + nah->a.size;
+    sem_down(&__malloc_semaphore, 0);
+
+    for (nah = __malloc_head.a.next;
+	 ARENA_TYPE_GET(nah->a.attrs) != ARENA_TYPE_HEAD;
+         nah = nah->a.next) {
+        n_end = (size_t) nah + ARENA_SIZE_GET(nah->a.attrs);
 
 	/* Is nah entirely beyond this block? */
 	if ((size_t) nah >= a_end)
@@ -80,34 +104,39 @@ void __inject_free_block(struct free_arena_header *ah)
 	if ((size_t) ah >= n_end)
 	    continue;
 
-	/* Otherwise we have some sort of overlap - reject this block */
-	return;
+        /* Otherwise we have some sort of overlap - reject this block */
+	nah = NULL;
+	break;
     }
 
     /* Now, nah should point to the successor block */
-    ah->a.next = nah;
-    ah->a.prev = nah->a.prev;
-    nah->a.prev = ah;
-    ah->a.prev->a.next = ah;
+    if (nah) {
+	ah->a.next = nah;
+	ah->a.prev = nah->a.prev;
+	nah->a.prev = ah;
+	ah->a.prev->a.next = ah;
 
-    __free_block(ah);
+	__free_block(ah);
+    }
+
+    sem_up(&__malloc_semaphore);
 }
 
-void free(void *ptr)
-{
-    struct free_arena_header *ah;
+void __free_tagged(void *tag) {
+    struct free_arena_header *fp, *nfp;
+    
+    sem_down(&__malloc_semaphore, 0);
+	
+    for (fp = __malloc_head.a.next, nfp = fp->a.next;
+	 ARENA_TYPE_GET(fp->a.attrs) != ARENA_TYPE_HEAD;
+	 fp = nfp, nfp = fp->a.next) {
+	
+	if (ARENA_TYPE_GET(fp->a.attrs) == ARENA_TYPE_USED &&
+	    fp->a.tag == tag) {
+	    // Free this block
+	    __free_block(fp);
+	}
+    }
 
-    if (!ptr)
-	return;
-
-    ah = (struct free_arena_header *)
-	((struct arena_header *)ptr - 1);
-
-#ifdef DEBUG_MALLOC
-    assert(ah->a.type == ARENA_TYPE_USED);
-#endif
-
-    __free_block(ah);
-
-    /* Here we could insert code to return memory to the system. */
+    sem_up(&__malloc_semaphore);
 }

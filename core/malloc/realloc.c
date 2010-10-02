@@ -22,6 +22,8 @@ void *realloc(void *ptr, size_t size)
 	return NULL;
     }
 
+    sem_down(&__malloc_semaphore, 0);
+
     ah = (struct free_arena_header *)
 	((struct arena_header *)ptr - 1);
 
@@ -34,6 +36,7 @@ void *realloc(void *ptr, size_t size)
     if (oldsize >= newsize && newsize >= (oldsize >> 2) &&
 	oldsize - newsize < 4096) {
 	/* This allocation is close enough already. */
+	sem_up(&__malloc_semaphore);
 	return ptr;
     } else {
 	xsize = oldsize;
@@ -81,18 +84,22 @@ void *realloc(void *ptr, size_t size)
 		    __malloc_head.next_free = nah;
 		    nah->next_free->prev_free = nah;
 		}
-	    }
-	    /* otherwise, use up the whole block */
-	    return ptr;
-	} else {
-	    /* Last resort: need to allocate a new block and copy */
-	    oldsize -= sizeof(struct arena_header);
-	    newptr = malloc(size);
-	    if (newptr) {
-		memcpy(newptr, ptr, min(size, oldsize));
-		free(ptr);
-	    }
-	    return newptr;
-	}
+            }
+            /* otherwise, use up the whole block */
+	    sem_up(&__malloc_semaphore);
+            return ptr;
+        } else {
+            /* Last resort: need to allocate a new block and copy */
+	    sem_up(&__malloc_semaphore);
+            oldsize -= sizeof(struct arena_header);
+            newptr = malloc(size);
+            if (newptr) {
+	        memcpy(newptr, ptr, min(size,oldsize));
+	        /* Retain tag from the old block */
+	        __mem_set_tag(newptr, __mem_get_tag(ptr));
+	        free(ptr);
+            }
+            return newptr;
+        }
     }
 }

@@ -90,6 +90,11 @@ check_escapes:
 enough_ram:
 skip_checks:
 
+;
+; Initialize the rest of the 32-bit environment
+;
+		pm_call init_env32
+
 		section .data16
 err_noram	db 'It appears your computer has less than '
 .size		db '000'
