@@ -126,7 +126,7 @@ netinstall: installer
 
 tidy dist:
 	find . -type f \( -name '*.o' -o -name '*.a' -o -name '.*.d' \
-		-o -name '*.lst' \) -print | xargs -rt rm -f
+		-o -name '*.lst' \) -print | xargs -t rm -f
 	rm -f codepage.cp *.elf stupid.* patch.offset .depend
 	rm -f *.elf.tmp *.sym
 	rm -f *.lsr *.lst *.map *.sec *.raw

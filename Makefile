@@ -147,7 +147,7 @@ clean: local-tidy local-clean
 local-dist:
 	find . \( -name '*~' -o -name '#*' -o -name core \
 		-o -name '.*.d' -o -name .depend \) -type f -print0 \
-	| xargs -0rt rm -f
+	| xargs -0t rm -f
 
 dist: local-dist local-tidy
 	set -e ; for i in $(BESUBDIRS) $(IESUBDIRS) $(BSUBDIRS) $(ISUBDIRS) ; do $(MAKE) -C $$i $@ ; done

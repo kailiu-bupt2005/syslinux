@@ -210,7 +210,7 @@ klibc.c32 : $(DYNLIBOBJS)
 tidy dist clean:
 	rm -f sys/vesa/alphatbl.c
 	find . \( -name \*.o -o -name \*.a -o -name .\*.d -o -name \*.tmp \) -print0 | \
-		xargs -0r rm -f
+		xargs -0 rm -f
 
 spotless: clean
 	rm -f *.a
