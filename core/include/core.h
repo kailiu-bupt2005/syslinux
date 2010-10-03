@@ -4,6 +4,7 @@
 #include <klibc/compiler.h>
 #include <com32.h>
 #include <syslinux/pmapi.h>
+#include <core/jiffies.h>
 
 extern char core_xfer_buf[65536];
 extern char core_cache_buf[65536];
@@ -68,10 +69,6 @@ __noreturn _kaboom(void);
  * Basic timer function...
  */
 extern volatile uint32_t __jiffies, __ms_timer;
-static inline uint32_t jiffies(void)
-{
-    return __jiffies;
-}
 static inline uint32_t ms_timer(void)
 {
     return __ms_timer;
