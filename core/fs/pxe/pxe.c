@@ -1643,9 +1643,9 @@ static void network_init(void)
 
 #if 1				/* new stuff */
     printf("undi_tcpip_start...\n");
-    undi_tcpip_start((struct ip_addr *)&MyIP,
-		     (struct ip_addr *)&net_mask,
-		     (struct ip_addr *)&gate_way);
+    undi_tcpip_start((struct ip_addr *)&IPInfo.myip,
+		     (struct ip_addr *)&IPInfo.netmask,
+		     (struct ip_addr *)&IPInfo.gateway);
 
     for (i = 0; i < DNS_MAX_SERVERS; i++) {
 	/* Transfer the DNS information to lwip */
