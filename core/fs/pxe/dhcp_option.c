@@ -32,25 +32,19 @@ static void dns_servers(const void *data, int opt_len)
     int num = 0;
 
     while (num < DNS_MAX_SERVERS) {
-	uint32_t ip;
+	    uint32_t ip;
 
-	if (opt_len < 4)
-	    break;
+	    if (opt_len < 4)
+	        break;
 
-#if 0
-    /*
-     * if you find you got no corret DNS server, you can add
-     * it here manually. BUT be carefull the DNS_MAX_SERVERS
-     */
-    if (i < DNS_MAX_SERVERS)
-        dns_server[i++] = your_master_dns_server;
-    if (i < DNS_MAX_SERVERS)
-        dns_server[i++] = your_second_dns_server;
-#endif
+		opt_len -= 4;
+		ip = *dp++;
+		if (ip_ok(ip))
+		    dns_server[num++] = ip;
+    }
 
-    /* Clear the rest of the dns_server array */
-    for (; i < DNS_MAX_SERVERS; i++)
-	dns_server[i] = 0;
+    while (num < DNS_MAX_SERVERS)
+       dns_server[num++] = 0;
 }
 
 static void local_domain(const void *data, int opt_len)

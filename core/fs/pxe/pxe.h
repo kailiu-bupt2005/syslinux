@@ -151,9 +151,12 @@ struct bootp_t {
     uint8_t  options[1260]; /* Vendor options */
 } __attribute__ ((packed));
 
-struct open_file_t {
-    struct netstream data;	/* Data network connection */
-    struct netstream ctl;	/* Control network connection (used by FTP) */
+/*
+ * Our inode private information -- this includes the packet buffer!
+ */
+struct pxe_pvt_inode {
+    struct netstream data;     /* Data network connection */
+    struct netstream ctl;      /* Control network connection (used by FTP) */
 
     uint16_t tftp_localport;   /* Local port number  (0=not in us)*/
     uint16_t tftp_remoteport;  /* Remote port number */
