@@ -13,6 +13,8 @@
 
 #include "malloc.h"
 
+DECLARE_INIT_SEMAPHORE(__malloc_semaphore, 1);
+
 static void *__malloc_from_block(struct free_arena_header *fp,
 				 size_t size, malloc_tag_t tag)
 {
