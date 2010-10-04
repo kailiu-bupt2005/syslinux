@@ -82,7 +82,9 @@ void free(void *ptr)
     assert( ARENA_TYPE_GET(ah->a.attrs) == ARENA_TYPE_USED );
 #endif
 
+    sem_down(&__malloc_semaphore, 0);
     __free_block(ah);
+    sem_up(&__malloc_semaphore);
 
   /* Here we could insert code to return memory to the system. */
 }
@@ -99,6 +101,8 @@ void __inject_free_block(struct free_arena_header *ah)
     struct free_arena_header *nah;
     size_t a_end = (size_t) ah + ARENA_SIZE_GET(ah->a.attrs);
     size_t n_end;
+
+    sem_down(&__malloc_semaphore, 0);
 
     //dprintf("inject: %#zx bytes @ %p, heap %u (%p)\n",
     printf("inject: %#zx bytes @%p, heap%u (%p)\n",
@@ -129,6 +133,8 @@ void __inject_free_block(struct free_arena_header *ah)
     ah->a.prev->a.next = ah;
 
     __free_block(ah);
+
+    sem_up(&__malloc_semaphore);
 }
 
 /*
@@ -137,6 +143,8 @@ void __inject_free_block(struct free_arena_header *ah)
 static void __free_tagged(malloc_tag_t tag) {
     struct free_arena_header *fp, *head;
     int i;
+
+    sem_down(&__malloc_semaphore, 0);
 
     for (i = 0; i < NHEAP; i++) {
 	dprintf("__free_tagged(%u) heap %d\n", tag, i);
@@ -149,6 +157,8 @@ static void __free_tagged(malloc_tag_t tag) {
     }
 
     dprintf("__free_tagged(%u) done\n", tag);
+
+    sem_up(&__malloc_semaphore);
 }
 
 void comboot_cleanup_lowmem(com32sys_t *regs)

@@ -69,6 +69,8 @@ static void *_malloc(size_t size, enum heap heap, malloc_tag_t tag)
     dprintf("_malloc(%zu, %u, %u) @ %p = ",
 	size, heap, tag, __builtin_return_address(0));
 
+    sem_down(&__malloc_semaphore, 0);
+
     if (size) {
 	/* Add the obligatory arena header, and round up */
 	size = (size + 2 * sizeof(struct arena_header) - 1) & ARENA_SIZE_MASK;
@@ -83,6 +85,9 @@ static void *_malloc(size_t size, enum heap heap, malloc_tag_t tag)
     }
 
     dprintf("%p\n", p);
+
+    sem_up(&__malloc_semaphore);
+
     return p;
 }
 
@@ -117,6 +122,8 @@ void *realloc(void *ptr, size_t size)
 	return NULL;
     }
 
+    sem_down(&__malloc_semaphore, 0);
+
     ah = (struct free_arena_header *)
 	((struct arena_header *)ptr - 1);
 
@@ -132,6 +139,7 @@ void *realloc(void *ptr, size_t size)
     if (oldsize >= newsize && newsize >= (oldsize >> 2) &&
 	oldsize - newsize < 4096) {
 	/* This allocation is close enough already. */
+        sem_up(&__malloc_semaphore);
 	return ptr;
     } else {
 	xsize = oldsize;
@@ -188,9 +196,11 @@ void *realloc(void *ptr, size_t size)
 		}
    	    }
 	    /* otherwise, use up the whole block */
+        sem_up(&__malloc_semaphore);
 	    return ptr;
 	} else {
 	    /* Last resort: need to allocate a new block and copy */
+        sem_up(&__malloc_semaphore);
 	    oldsize -= sizeof(struct arena_header);
 	    newptr = malloc(size);
 	    if (newptr) {
