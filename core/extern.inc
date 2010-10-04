@@ -15,8 +15,13 @@
 	;abort.c
 	extern abort_load_new
 
+	; mem/init.c
+    extern mem_init
+
 	; elflink/load_env32.c
 	extern init_env32
+    extern printf_init
+    extern enter_cmdline
 
 	; fs.c
 	extern fs_init, pm_searchdir, getfssec, getfsbytes
