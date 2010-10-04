@@ -1172,7 +1172,7 @@ init_fs:
                 mov si,[bsHeads]
 		mov di,[bsSecPerTrack]
 		pm_call fs_init
-		pm_call load_env32
+		pm_call init_env32
 		popad
 
 		section .rodata
