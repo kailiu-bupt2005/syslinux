@@ -46,7 +46,7 @@ int http_open(struct file *file, struct url_info *url,
     int64_t content_length;
     char *ep;
     int rv = -1;
-    struct open_file_t *of = file->open_file;
+    struct pxe_pvt_inode *socket = PVT(file->inode);
 
     *redirect = NULL;
 
@@ -76,18 +76,18 @@ int http_open(struct file *file, struct url_info *url,
 
     /* XXX: implement at least basic authentication here */
 
-    memset(&of->data, 0, sizeof of->data);
+    memset(&socket->data, 0, sizeof socket->data);
 
     err = netconn_gethostbyname(url->host, &ip);
     if (err)
 	return -1;
 
-    of->data.conn = conn = netconn_new(NETCONN_TCP);
-    err = netconn_connect(of->data.conn, &ip, url->port ? url->port : 80);
+    socket->data.conn = conn = netconn_new(NETCONN_TCP);
+    err = netconn_connect(socket->data.conn, &ip, url->port ? url->port : 80);
     if (err)
 	goto err_delete;
 
-    err = netconn_write(of->data.conn, strbuf_str(http_header),
+    err = netconn_write(socket->data.conn, strbuf_str(http_header),
 			strbuf_len(http_header), NETCONN_NOCOPY);
     if (err)
 	goto err_disconnect;
@@ -102,7 +102,7 @@ int http_open(struct file *file, struct url_info *url,
     content_length = -1;
 
     while (state != st_eoh) {
-	c = netstream_getc(&of->data);
+        c = netstream_getc(&socket->data);
 	if (c == -1)
 	    break;
 
@@ -229,11 +229,11 @@ err_disconnect:
     if (!rv)
 	return rv;
 
-    if (of->data.buf)
-	netbuf_delete(of->data.buf);
-    netconn_disconnect(of->data.conn);
+    if (socket->data.buf)
+        netbuf_delete(socket->data.buf);
+    netconn_disconnect(socket->data.conn);
 err_delete:
-    netconn_delete(of->data.conn);
+    netconn_delete(socket->data.conn);
     return rv;
 }
 

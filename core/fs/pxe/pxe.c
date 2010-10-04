@@ -642,8 +642,7 @@ static uint32_t pxe_getfssec(struct file *file, char *buf,
  *
  * @param:filename, the file we wanna open
  *
- * @out: open_file_t structure, stores in file->open_file
- * @out: the lenght of this file, stores in file->file_len
+ * @out: the length of this file, stores in file->inode->size
  *
  */
 static void pxe_searchdir(const char *filename, struct file *file)

@@ -95,7 +95,7 @@ int ftp_open(struct file *file, struct url_info *url,
 {
     struct ip_addr ip;
     int rv = -1;
-    struct open_file_t *of = file->open_file;
+    struct pxe_pvt_inode *socket = PVT(file->inode);
     uint8_t pasv_data[6];
     int pasv_bytes;
     int resp;
@@ -107,56 +107,56 @@ int ftp_open(struct file *file, struct url_info *url,
     if (err)
 	return -1;
 
-    memset(&of->ctl, 0, sizeof of->ctl);
-    of->ctl.conn = netconn_new(NETCONN_TCP);
-    err = netconn_connect(of->ctl.conn, &ip, url->port ? url->port : 21);
+    memset(&socket->ctl, 0, sizeof socket->ctl);
+    socket->ctl.conn = netconn_new(NETCONN_TCP);
+    err = netconn_connect(socket->ctl.conn, &ip, url->port ? url->port : 21);
     if (err)
 	goto err_delete;
 
     do {
-	resp = ftp_cmd_response(&of->ctl, "", NULL, NULL);
+        resp = ftp_cmd_response(&socket->ctl, "", NULL, NULL);
     } while (resp == 120);
     if (resp != 220)
 	goto err_disconnect;
 
-    resp = ftp_cmd_response(&of->ctl, "USER anonymous\r\n", NULL, NULL);
+    resp = ftp_cmd_response(&socket->ctl, "USER anonymous\r\n", NULL, NULL);
     if (resp != 202 && resp != 230) {
 	if (resp != 331)
 	    goto err_disconnect;
 
-	resp = ftp_cmd_response(&of->ctl, "PASS pxelinux@\r\n", NULL, NULL);
+        resp = ftp_cmd_response(&socket->ctl, "PASS pxelinux@\r\n", NULL, NULL);
 	if (resp != 230)
 	    goto err_disconnect;
     }
 
-    resp = ftp_cmd_response(&of->ctl, "TYPE I\r\n", NULL, NULL);
+    resp = ftp_cmd_response(&socket->ctl, "TYPE I\r\n", NULL, NULL);
     if (resp != 200)
 	goto err_disconnect;
 
-    resp = ftp_cmd_response(&of->ctl, "PASV\r\n", pasv_data, &pasv_bytes);
+    resp = ftp_cmd_response(&socket->ctl, "PASV\r\n", pasv_data, &pasv_bytes);
     if (resp != 227 || pasv_bytes != 6)
 	goto err_disconnect;
 
-    resp = ftp_cmd_response(&of->ctl, "RETR filename\r\n", NULL, NULL);
+    resp = ftp_cmd_response(&socket->ctl, "RETR filename\r\n", NULL, NULL);
     if (resp != 125 && resp != 150)
 	goto err_disconnect;
 
-    memset(&of->data, 0, sizeof of->data);
-    of->data.conn = netconn_new(NETCONN_TCP);
-    err = netconn_connect(of->data.conn, (struct ip_addr *)&pasv_data[0],
+    memset(&socket->data, 0, sizeof socket->data);
+    socket->data.conn = netconn_new(NETCONN_TCP);
+    err = netconn_connect(socket->data.conn, (struct ip_addr *)&pasv_data[0],
 			  ntohs(*(uint16_t *)&pasv_data[4]));
     if (err)
 	goto err_disconnect;
 
 err_disconnect:
-    if (of->data.conn)
-	netconn_delete(of->data.conn);
+    if (socket->data.conn)
+        netconn_delete(socket->data.conn);
 
-    if (of->ctl.buf)
-	netbuf_delete(of->ctl.buf);
-    netconn_disconnect(of->ctl.conn);
+    if (socket->ctl.buf)
+        netbuf_delete(socket->ctl.buf);
+    netconn_disconnect(socket->ctl.conn);
 err_delete:
-    netconn_delete(of->ctl.conn);
+    netconn_delete(socket->ctl.conn);
     return rv;
 }
 
