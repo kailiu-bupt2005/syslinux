@@ -1675,9 +1675,6 @@ static int pxe_fs_init(struct fs_info *fs)
 
     pxe_init_isr();
 
-    /* Initialize the Files structure */
-    files_init();
-
     /* This block size is actually arbitrary... */
     fs->sector_shift = fs->block_shift = TFTP_BLOCKSIZE_LG2;
     fs->sector_size  = fs->block_size  = 1 << TFTP_BLOCKSIZE_LG2;
