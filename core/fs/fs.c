@@ -89,6 +89,11 @@ void pm_load_config(com32sys_t *regs)
     set_flags(regs, err ? EFLAGS_ZF : 0);
 }
 
+FILE * open_default_config(void)
+{
+	return this_fs->fs_ops->load_config();
+}
+
 void pm_mangle_name(com32sys_t *regs)
 {
     const char *src = MK_PTR(regs->ds, regs->esi.w[0]);

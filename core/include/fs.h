@@ -212,7 +212,7 @@ void generic_mangle_name(char *, const char *);
 
 /* loadconfig.c */
 int search_config(const char *search_directores[], const char *filenames[]);
-int generic_load_config(void);
+FILE *generic_load_config(void);
 
 /* close.c */
 void generic_close_file(struct file *file);
