@@ -73,22 +73,6 @@ void _close_file(struct file *file)
     free_file(file);
 }
 
-/*
- * Convert between a 16-bit file handle and a file structure
- */
-
-void pm_load_config(com32sys_t *regs)
-{
-    int err;
-
-    err = this_fs->fs_ops->load_config();
-
-    if (err)
-	printf("ERROR: No configuration file found\n");
-
-    set_flags(regs, err ? EFLAGS_ZF : 0);
-}
-
 FILE * open_default_config(void)
 {
 	return this_fs->fs_ops->load_config();
