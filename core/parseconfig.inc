@@ -17,6 +17,7 @@
 ;; Configuration file operations
 ;;
 
+%if 0
 		section .text16
 ;
 ; "default" or "ui" command, with level (1 = default, 2 = ui)
@@ -434,6 +435,7 @@ commit_vk:
 		mov si,vk_overflow_msg
 		call writestr
 		ret
+%endif
 
 		section .data16
 vk_overflow_msg	db 'Out of memory parsing config file', CR, LF, 0
