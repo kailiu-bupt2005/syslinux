@@ -1033,44 +1033,39 @@ static int pxe_chdir(struct fs_info *fs, const char *src)
 }
 
  /*
-  * try to load a config file, if found, return 1, or return 0
-  *
+  * Try to open a config file, if found, return the file descriptor, or return NULL 
   */
-static int try_load(char *config_name)
+static FILE *try_load(char *config_name)
 {
-    com32sys_t regs;
+	FILE *f;
 
-    printf("Trying to load: %-50s  ", config_name);
-    pxe_mangle_name(KernelName, config_name);
+	printf("Trying to load: %-50s  ", config_name);
+	pxe_mangle_name(KernelName, config_name);
 
-    memset(&regs, 0, sizeof regs);
-    regs.edi.w[0] = OFFS_WRT(KernelName, 0);
-    call16(core_open, &regs, &regs);
-    if (regs.eflags.l & EFLAGS_ZF) {
-	strcpy(ConfigName, KernelName);
-        printf("\r");
-        return 0;
-    } else {
-        printf("ok\n");
-        return 1;
-    }
+	f = fopen(KernelName, "r");
+	if (f) {
+		printf("ok\n");
+		return f;
+	} else {
+		printf("\r");
+		return NULL;
+	}
 }
 
-
-/* Load the config file, return 1 if failed, or 0 */
-static int pxe_load_config(void)
+static FILE *pxe_load_config(void)
 {
     const char *cfgprefix = "pxelinux.cfg/";
     const char *default_str = "default";
     char *config_file;
     char *last;
     int tries = 8;
+    FILE *f;
 
     get_prefix();
     if (DHCPMagic & 0x02) {
         /* We got a DHCP option, try it first */
-	if (try_load(ConfigName))
-	    return 0;
+	if (f = try_load(ConfigName))
+	    return f;
     }
 
     /*
@@ -1081,30 +1076,30 @@ static int pxe_load_config(void)
     /* Try loading by UUID */
     if (have_uuid) {
 	strcpy(config_file, UUID_str);
-	if (try_load(ConfigName))
-            return 0;
+	if (f = try_load(ConfigName))
+	    return f;
     }
 
     /* Try loading by MAC address */
     strcpy(config_file, MAC_str);
-    if (try_load(ConfigName))
-        return 0;
+    if (f = try_load(ConfigName))
+        return f;
 
     /* Nope, try hexadecimal IP prefixes... */
     uchexbytes(config_file, (uint8_t *)&IPInfo.myip, 4);
     last = &config_file[8];
     while (tries) {
         *last = '\0';        /* Zero-terminate string */
-	if (try_load(ConfigName))
-            return 0;
+	if (f = try_load(ConfigName))
+	    return f;
         last--;           /* Drop one character */
         tries--;
     };
 
     /* Final attempt: "default" string */
     strcpy(config_file, default_str);
-    if (try_load(ConfigName))
-        return 0;
+    if (f = try_load(ConfigName))
+        return f;
 
     printf("%-68s\n", "Unable to locate configuration file");
     kaboom();
