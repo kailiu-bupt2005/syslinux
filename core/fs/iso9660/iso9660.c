@@ -273,7 +273,7 @@ static int iso_readdir(struct file *file, struct dirent *dirent)
 }
 
 /* Load the config file, return 1 if failed, or 0 */
-static int iso_load_config(void)
+static FILE *iso_load_config(void)
 {
     static const char *search_directories[] = {
 	"/boot/isolinux", 
@@ -289,7 +289,7 @@ static int iso_load_config(void)
 	NULL
     };
 
-    return search_config(search_directories, filenames);
+    return search_open_config(search_directories, filenames);
 }
 
 static int iso_fs_init(struct fs_info *fs)

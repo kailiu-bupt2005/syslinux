@@ -1047,24 +1047,14 @@ static int parse_one_config(const char *filename)
 	FILE *f;
 	int i;
 
-	/*
-	if (!strcmp(filename, "~"))
-		filename = __syslinux_config_file;
-	*/
+	if (filename) {
+		f = fopen(filename, "r");
+		if (f)
+			goto config_found;
+	}
 
-    if (filename) {
-        f = fopen(filename, "r");
-        if (f)
-            goto config_found;
-        dprintf("Configuration file [%s] couldn't be open\n", filename);
-    }
-
-	/* force to use hard coded config file name */
-	f = fopen("extlinux.conf", "r");
-	if (f)
-		goto config_found;
-
-	f = fopen("isolinux.cfg", "r");
+	/* Search and open the default config file */
+	f = open_default_config();
 	if (f)
 		goto config_found;
 
@@ -1134,7 +1124,7 @@ void parse_configs(char **argv)
     current_menu = root_menu;
 
     if (!argv || !*argv) {
-        parse_one_config("~");
+        parse_one_config(NULL);
     } else {
 	while ((filename = *argv++)) {
 	    parse_one_config(filename);

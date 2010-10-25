@@ -73,20 +73,9 @@ void _close_file(struct file *file)
     free_file(file);
 }
 
-/*
- * Convert between a 16-bit file handle and a file structure
- */
-
-void pm_load_config(com32sys_t *regs)
+FILE * open_default_config(void)
 {
-    int err;
-
-    err = this_fs->fs_ops->load_config();
-
-    if (err)
-	printf("ERROR: No configuration file found\n");
-
-    set_flags(regs, err ? EFLAGS_ZF : 0);
+	return this_fs->fs_ops->load_config();
 }
 
 void pm_mangle_name(com32sys_t *regs)
@@ -428,10 +417,6 @@ void fs_init(com32sys_t *regs)
     struct device *dev = NULL;
     /* ops is a ptr list for several fs_ops */
     const struct fs_ops **ops = (const struct fs_ops **)regs->eax.l;
-
-    /* Initialize malloc() */
-    dprintf("Initializing malloc\n");
-    mem_init();
 
     /* Default name for the root directory */
     fs.cwd_name[0] = '/';

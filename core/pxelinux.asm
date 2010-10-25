@@ -265,9 +265,7 @@ ROOT_FS_OPS:
 
 ;
 ; Load configuration file
-;
-                pm_call pm_load_config
-		jz no_config_file
+        pm_call init_env32
 
 ;
 ; Now we have the config file open.  Parse the config file and
