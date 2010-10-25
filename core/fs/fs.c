@@ -430,6 +430,7 @@ void fs_init(com32sys_t *regs)
     const struct fs_ops **ops = (const struct fs_ops **)regs->eax.l;
 
     /* Initialize malloc() */
+    dprintf("Initializing malloc\n");
     mem_init();
 
     /* Default name for the root directory */
@@ -452,9 +453,11 @@ void fs_init(com32sys_t *regs)
 	    fs.fs_dev = dev;
 	}
 	/* invoke the fs-specific init code */
+	dprintf("Trying fs type: %s\n", fs.fs_ops->fs_name);
 	blk_shift = fs.fs_ops->fs_init(&fs);
 	ops++;
     }
+
     if (blk_shift < 0) {
 	printf("No valid file system found!\n");
 	while (1)

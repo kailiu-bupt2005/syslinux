@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <dprintf.h>
 #include <console.h>
 #include <com32.h>
 #include <syslinux/adv.h>
@@ -92,7 +93,7 @@ void start_ui(char *config_file)
 	char *cmdline;
 	char *argv[2] = {config_file, NULL};
 
-	mp("enter, config file = %s", config_file);
+    dprintf("Processing config file: %s\n", config_file);
 
 	parse_configs(argv);
 
@@ -102,8 +103,12 @@ void start_ui(char *config_file)
 		if (*cmdline == '.') {
 			while (*cmdline++ != ' ');
 		}
+
+        dprintf("Executing command: %s\n", cmdline);
 		process_command(cmdline);
 	}
+
+    dprintf("No menu found, entering command line\n");
 
 	/* Should never return */
 	enter_cmdline();
@@ -114,7 +119,8 @@ void start_ui(char *config_file)
  */
 void init_env32(com32sys_t *regs)
 {
-	printf("Starting 32 bit elf module subsystem...\n");
+	dprintf("Starting 32 bit elf module subsystem...\n");
+
 	call_constr();
 	openconsole(&dev_rawcon_r, &dev_ansiserial_w);
 	INIT_LIST_HEAD(&cli_history_head);

@@ -15,6 +15,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <dprintf.h>
 #include <minmax.h>
 #include <alloca.h>
 #include <inttypes.h>
@@ -1048,12 +1049,15 @@ static int parse_one_config(const char *filename)
 
 	/*
 	if (!strcmp(filename, "~"))
-		filename = syslinux_config_file();
+		filename = __syslinux_config_file;
 	*/
 
-	f = fopen(filename, "r");
-	if (f)
-		goto config_found;
+    if (filename) {
+        f = fopen(filename, "r");
+        if (f)
+            goto config_found;
+        dprintf("Configuration file [%s] couldn't be open\n", filename);
+    }
 
 	/* force to use hard coded config file name */
 	f = fopen("extlinux.conf", "r");
@@ -1064,8 +1068,10 @@ static int parse_one_config(const char *filename)
 	if (f)
 		goto config_found;
 
+    dprintf("Couldn't find any configuration file\n");
 	return -1;
 config_found:
+    dprintf("Parsing configuration file: %s\n", filename);
 	parse_config_file(f);
 	fclose(f);
 	return 0;
@@ -1109,7 +1115,6 @@ void parse_configs(char **argv)
     struct menu *m;
     struct menu_entry *me;
     char *cmdline;
-    mp("enter");
 
     empty_string = refstrdup("");
 
@@ -1129,10 +1134,9 @@ void parse_configs(char **argv)
     current_menu = root_menu;
 
     if (!argv || !*argv) {
-	parse_one_config("~");
+        parse_one_config("~");
     } else {
 	while ((filename = *argv++)) {
-		mp("Parsing config: %s", filename);
 	    parse_one_config(filename);
 	}
     }
@@ -1146,13 +1150,13 @@ void parse_configs(char **argv)
     /* Handle global default */
     //if (has_ui && globaldefault) {
     if (globaldefault) {
-	mp("gloabldefault = %s", globaldefault);
-	me = find_label(globaldefault);
-	if (me && me->menu != hide_menu) {
-	    me->menu->defentry = me->entry;
-	    start_menu = me->menu;
-	    default_menu = me->menu;
-	}
+        dprintf("DEFAULT is: %s\n", globaldefault);
+        me = find_label(globaldefault);
+        if (me && me->menu != hide_menu) {
+            me->menu->defentry = me->entry;
+            start_menu = me->menu;
+            default_menu = me->menu;
+        }
     }
 
     /* If "menu save" is active, let the ADV override the global default */
