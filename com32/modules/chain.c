@@ -76,6 +76,10 @@
  *	equivalent to seg=0x70 file=<loader> sethidden,
  *	used with DOS' io.sys.
  *
+ * drmk=<loader>
+ *	Similar to msdos=<loader> but prepares the special options
+ *	for the Dell Real Mode Kernel.
+ *
  * grub=<loader>
  *	same as seg=0x800 file=<loader> & jumping to seg 0x820,
  *	used with GRUB Legacy stage2 files.
@@ -266,23 +270,21 @@ static void *read_sectors(uint64_t lba, uint8_t count)
 	    if (lba)
 		return NULL;	/* Can only read MBR */
 
-	    s = 1;
-	    h = 0;
-	    c = 0;
+	    s = h = c = 0;
 	} else {
-	    s = (lba % disk_info.sect) + 1;
+	    s = lba % disk_info.sect;
 	    t = lba / disk_info.sect;	/* Track = head*cyl */
 	    h = t % disk_info.head;
 	    c = t / disk_info.head;
 	}
 
-	if (s > 63 || h > 256 || c > 1023)
+	if (s >= 63 || h >= 256 || c >= 1024)
 	    return NULL;
 
 	inreg.eax.b[0] = count;
 	inreg.eax.b[1] = 0x02;	/* Read */
-	inreg.ecx.b[1] = c & 0xff;
-	inreg.ecx.b[0] = s + (c >> 6);
+	inreg.ecx.b[1] = c;
+	inreg.ecx.b[0] = ((c & 0x300) >> 2) | (s+1);
 	inreg.edx.b[1] = h;
 	inreg.edx.b[0] = disk_info.disk;
 	inreg.ebx.w[0] = OFFS(buf);
@@ -327,22 +329,20 @@ static int write_sector(unsigned int lba, const void *data)
 	    if (lba)
 		return -1;	/* Can only write MBR */
 
-	    s = 1;
-	    h = 0;
-	    c = 0;
+	    s = h = c = 0;
 	} else {
-	    s = (lba % disk_info.sect) + 1;
+	    s = lba % disk_info.sect;
 	    t = lba / disk_info.sect;	/* Track = head*cyl */
 	    h = t % disk_info.head;
 	    c = t / disk_info.head;
 	}
 
-	if (s > 63 || h > 256 || c > 1023)
+	if (s >= 63 || h >= 256 || c >= 1024)
 	    return -1;
 
 	inreg.eax.w[0] = 0x0301;	/* Write one sector */
-	inreg.ecx.b[1] = c & 0xff;
-	inreg.ecx.b[0] = s + (c >> 6);
+	inreg.ecx.b[1] = c;
+	inreg.ecx.b[0] = ((c & 0x300) >> 2) | (s+1);
 	inreg.edx.b[1] = h;
 	inreg.edx.b[0] = disk_info.disk;
 	inreg.ebx.w[0] = OFFS(buf);
@@ -1711,16 +1711,31 @@ int main(int argc, char *argv[])
 	     * We only really need 4 new, usable bytes at the end.
 	     */
 	    int tsize = (data[ndata].size + 19) & 0xfffffff0;
+	    const union syslinux_derivative_info *sdi;
+
+	    sdi = syslinux_derivative_info();
+	    /* We should lookup the Syslinux partition offset and use it */
+	    fs_lba = *sdi->disk.partoffset;
+	    /*
+	     * fs_lba should be verified against the disk as some DRMK
+	     * variants will check and fail if it does not match
+	     */
+	    dprintf("  fs_lba offset is %d\n", fs_lba);
+	    /* DRMK only uses a DWORD */
+	    if (fs_lba > 0xffffffff) {
+		error("LBA very large; Only using lower 32 bits; DRMK will probably fail\n");
+	    }
 	    regs.ss = regs.fs = regs.gs = 0;	/* Used before initialized */
 	    if (!realloc(data[ndata].data, tsize)) {
 		error("Failed to realloc for DRMK\n");
-		goto bail;
+		goto bail;	/* We'll never make it */
 	    }
 	    data[ndata].size = tsize;
-	    /* ds:[bp+28] must be 0x0000003f */
+	    /* ds:bp is assumed by DRMK to be the boot sector */
+	    /* offset 28 is the FAT HiddenSectors value */
 	    regs.ds = (tsize >> 4) + (opt.seg - 2);
 	    /* "Patch" into tail of the new space */
-	    *(int *)(data[ndata].data + tsize - 4) = 0x0000003f;
+	    *(int *)(data[ndata].data + tsize - 4) = (int)(fs_lba & 0xffffffff);
 	}
 
 	ndata++;
