@@ -45,3 +45,4 @@
 /utils/mkdiskimage
 /version.h
 /version.mk
+MCONFIG.local
